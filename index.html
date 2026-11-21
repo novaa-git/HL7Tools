@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>HL7 Message Inspector V3</title>
+        <style>
+            :root {
+                --bg: #0b1118;
+                --panel: #111a24;
+                --panel2: #162230;
+                --border: #263544;
+                --text: #e5edf5;
+                --muted: #91a4b8;
+                --accent: #62b6ff;
+                --green: #75d6a0;
+                --yellow: #f4c66b;
+                --red: #f28a8a;
+                --editor: #0e1721;
+                --selection: #25445f;
+                --line: #203040;
+                --shadow: 0 10px 30px rgba(0,0,0,.18)
+            }
+
+            [data-theme="light"] {
+                --bg: #eef2f6;
+                --panel: #fff;
+                --panel2: #f5f8fb;
+                --border: #d6e0e9;
+                --text: #182533;
+                --muted: #667b90;
+                --accent: #0878cf;
+                --green: #167b4b;
+                --yellow: #946313;
+                --red: #bd4545;
+                --editor: #fbfdff;
+                --selection: #d9edff;
+                --line: #e3eaf0;
+                --shadow: 0 8px 25px rgba(40,60,80,.08)
+            }
+
+
+
+            * {
+                box-sizing: border-box;
+                    scrollbar-width: thin;
+        
+            }
+
+ 
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font: 14px/1.45 Inter,Segoe UI,Arial,sans-serif;
+                transition: background .2s,color .2s
+            }
+
+            button {
+                font: inherit;
+                cursor: pointer;
+                border: 1px solid var(--border);
+                background: var(--panel2);
+                color: var(--text);
+                border-radius: 8px;
+                padding: 8px 12px;
+                transition: .15s
+            }
+
+            button:hover {
+                border-color: var(--accent);
+                transform: translateY(-1px)
+            }
+
+            button.primary {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #07131d;
+                font-weight: 700
+            }
+
+            button.iconbtn {
+                padding: 7px 10px
+            }
+
+            .app {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column
+            }
+
+            .topbar {
+                height: 64px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 20px;
+                border-bottom: 1px solid var(--border);
+                background: var(--panel);
+                gap: 16px
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                font-weight: 700;
+                font-size: 16px;
+                letter-spacing: .2px
+            }
+
+            .brandmark {
+                width: 34px;
+                height: 34px;
+                border-radius: 10px;
+                background: linear-gradient(135deg,#3f9fe8,#74d6b0);
+                display: grid;
+                place-items: center;
+                color: #07131d;
+                font-weight: 900
+            }
+
+            .brand small {
+                display: block;
+                color: var(--muted);
+                font-weight: 400;
+                font-size: 11px;
+                letter-spacing: .5px
+            }
+
+            .toolbar {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap
+            }
+
+            .main {
+                display: grid;
+                grid-template-columns: minmax(0,1fr) 400px;
+                gap: 14px;
+                padding: 14px;
+                flex: 1;
+                min-height: calc(100vh - 64px)
+            }
+
+            .workspace {
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: var(--shadow)
+            }
+
+            .editor-head {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 15px;
+                border-bottom: 1px solid var(--border);
+                gap: 12px
+            }
+
+            .editor-title {
+                font-weight: 700
+            }
+
+            .editor-title small {
+                display: block;
+                color: var(--muted);
+                font-weight: 400
+            }
+
+            .head-actions {
+                display: flex;
+                gap: 7px;
+                flex-wrap: wrap
+            }
+
+            .editor-wrap {
+                position: relative;
+                flex: 1;
+                min-height: 380px;
+                background: var(--editor);
+                  margin : 5px;
+                overflow: auto
+            }
+
+            .hl7-view {
+                padding: 18px 18px 18px 64px;
+                min-width: max-content;
+                font: 13px/1.9 Consolas,Monaco,monospace;
+                white-space: pre
+            }
+
+            .segment-line {
+                position: relative;
+                display: block;
+                min-height: 25px;
+                padding: 1px 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                white-space: pre
+            }
+
+            .segment-line:before {
+                content: attr(data-line);
+                position: absolute;
+                left: -48px;
+                width: 34px;
+                text-align: right;
+                color: var(--muted);
+                opacity: .65;
+                user-select: none
+            }
+
+            .segment-line:hover {
+                background: color-mix(in srgb,var(--accent) 10%,transparent)
+            }
+
+            .segment-line.active {
+                background: color-mix(in srgb,var(--selection) 80%,transparent);
+                outline: 1px solid color-mix(in srgb,var(--accent) 35%,transparent)
+            }
+
+            .seg-name {
+                color: #35b8ff;
+                font-weight: 700
+            }
+
+            .syntax-field {
+                color: #f4c95d;
+                font-weight: 700
+            }
+
+            .syntax-component {
+                color: #c084fc;
+                font-weight: 700
+            }
+
+            .syntax-repetition {
+                color: #ff9f43;
+                font-weight: 700
+            }
+
+            .syntax-escape {
+                color: #fb7185;
+                font-weight: 700
+            }
+
+            .syntax-subcomponent {
+                color: #4ade80;
+                font-weight: 700
+            }
+
+            .syntax-number {
+                color: #f472b6
+            }
+
+            .syntax-date {
+                color: #67e8f9
+            }
+
+            .syntax-text {
+                color: var(--text)
+            }
+
+            [data-theme="light"] .seg-name {
+                color: #0878cf
+            }
+
+            [data-theme="light"] .syntax-field {
+                color: #946313
+            }
+
+            [data-theme="light"] .syntax-component {
+                color: #8745b8
+            }
+
+            [data-theme="light"] .syntax-repetition {
+                color: #b75b08
+            }
+
+            [data-theme="light"] .syntax-escape {
+                color: #bd4545
+            }
+
+            [data-theme="light"] .syntax-subcomponent {
+                color: #167b4b
+            }
+
+            [data-theme="light"] .syntax-number {
+                color: #b43b78
+            }
+
+            [data-theme="light"] .syntax-date {
+                color: #087f91
+            }
+
+            .field {
+                border-radius: 3px;
+                padding: 0 1px;
+                cursor: pointer
+            }
+
+            .field:hover {
+                background: color-mix(in srgb,var(--yellow) 24%,transparent);
+                outline: 1px solid color-mix(in srgb,var(--yellow) 40%,transparent)
+            }
+
+            .field.selected {
+                background: var(--selection);
+                color: var(--text);
+                outline: 1px solid var(--accent)
+            }
+
+            .separator {
+                color: var(--muted);
+                opacity: .7
+            }
+
+            .empty {
+                color: var(--muted);
+                padding: 24px;
+                text-align: center
+            }
+
+            .statusbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                padding: 9px 14px;
+                border-top: 1px solid var(--border);
+                font-size: 12px;
+                color: var(--muted);
+                background: var(--panel2)
+            }
+
+            .status-left {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap
+            }
+
+            .status-dot {
+                display: inline-block;
+                width: 7px;
+                height: 7px;
+                background: var(--green);
+                border-radius: 50%;
+                margin-right: 6px
+            }
+
+            .inspector {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                overflow-x: hidden;
+                overflow-y: auto;
+                box-shadow: var(--shadow);
+                display: flex;
+                height: 90vh; 
+                flex-direction: column;
+                min-width: 0
+            }
+
+            .inspector-header {
+                padding: 15px;
+                border-bottom: 1px solid var(--border)
+            }
+
+            .inspector-header h2 {
+                margin: 0;
+                font-size: 15px
+            }
+
+            .inspector-header p {
+                margin: 4px 0 0;
+                color: var(--muted);
+                font-size: 12px
+            }
+
+            .inspector-content {
+                padding: 14px;
+                overflow: auto;
+                margin : 8px;
+            }
+
+            .selection-card {
+                background: var(--panel2);
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 14px
+            }
+
+            .selection-title {
+                font-weight: 700;
+                font-size: 16px;
+                color: var(--accent);
+                word-break: break-word
+            }
+
+            .selection-sub {
+                font-size: 12px;
+                color: var(--muted);
+                margin-top: 4px
+            }
+
+            .prop-group {
+                margin: 15px 0
+            }
+
+            .prop-group h3 {
+                font-size: 11px;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                color: var(--muted);
+                margin: 0 0 9px
+            }
+
+            .prop {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 7px 0;
+                border-bottom: 1px solid var(--line)
+            }
+
+            .prop:last-child {
+                border-bottom: 0
+            }
+
+            .prop .key {
+                color: var(--muted)
+            }
+
+            .prop .value {
+                text-align: right;
+                word-break: break-word;
+                max-width: 60%;
+                font-weight: 600
+            }
+
+            .component-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px
+            }
+
+            .component-row {
+                border: 1px solid var(--border);
+                border-radius: 7px;
+                padding: 8px;
+                background: var(--panel2)
+            }
+
+            .component-row strong {
+                font-size: 12px;
+                color: var(--accent)
+            }
+
+            .component-row span {
+                display: block;
+                margin-top: 3px;
+                word-break: break-word
+            }
+
+            .badge {
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 20px;
+                background: var(--panel2);
+                color: var(--muted);
+                border: 1px solid var(--border)
+            }
+
+            .welcome {
+                color: var(--muted);
+                font-size: 13px;
+                line-height: 1.6
+            }
+
+            .drop-note {
+                border: 1px dashed var(--border);
+                border-radius: 8px;
+                padding: 12px;
+                color: var(--muted);
+                margin-top: 12px;
+                font-size: 12px
+            }
+
+            .raw-area {
+                width: 100%;
+                height: 100%;
+                min-height: 400px;
+                resize: none;
+                border: 0;
+                outline: 0;
+                padding: 18px;
+                background: var(--editor);
+                color: var(--text);
+                font: 13px/1.6 Consolas,monospace;
+                display: none
+            }
+
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 10px 16px;
+                background: var(--panel);
+                border: 1px solid var(--border);
+                box-shadow: var(--shadow);
+                border-radius: 9px;
+                color: var(--text);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity .2s
+            }
+
+            .toast.show {
+                opacity: 1
+            }
+
+            .stats {
+                display: flex;
+                gap: 7px;
+                align-items: center
+            }
+
+            .stat-chip {
+                padding: 3px 7px;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--muted)
+            }
+
+            @media(max-width: 900px) {
+                .main {
+                    grid-template-columns:1fr
+                }
+
+                .inspector {
+                    min-height: 280px
+                }
+
+                .editor-wrap {
+                  
+                    min-height: 350px
+                }
+            }
+
+            @media(max-width: 600px) {
+                .topbar {
+                    height:auto;
+                    padding: 12px;
+                    align-items: flex-start;
+                    flex-direction: column
+                }
+
+                .main {
+                    padding: 8px
+                }
+
+                .toolbar button {
+                    padding: 7px 9px
+                }
+
+                .editor-head {
+                    align-items: flex-start;
+                    flex-direction: column
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app" id="app">
+            <header class="topbar">
+                <div class="brand">
+                    <div class="brandmark">H</div>
+                    <div>
+                        HL7 Inspector <small>MESSAGE EDITOR · V3 SYNTAX COLORING</small>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <button id="loadSample">Sample</button>
+                    <button id="pasteBtn">Paste</button>
+                    <button id="formatBtn">Format</button>
+                    <button id="validateBtn">Validate</button>
+                    <button id="copyBtn">Copy</button>
+                    <button id="themeBtn" class="iconbtn" title="Toggle theme">☼</button>
+                </div>
+            </header>
+            <main class="main">
+                <section class="workspace">
+                    <div class="editor-head">
+                        <div class="editor-title">
+                            Message Workspace <small>Click a segment or field to inspect</small>
+                        </div>
+                        <div class="head-actions">
+                            <button id="rawToggle">Raw view</button>
+                            <button id="clearBtn">Clear</button>
+                        </div>
+                    </div>
+                    <div class="editor-wrap" id="editorWrap">
+                        <div class="hl7-view" id="hl7View" tabindex="0"></div>
+                        <textarea class="raw-area" id="rawEditor" spellcheck="false" aria-label="Raw HL7 message"></textarea>
+                    </div>
+                    <div class="statusbar">
+                        <div class="status-left">
+                            <span>
+                                <span class="status-dot"></span>
+                                <span id="statusText">Ready</span>
+                            </span>
+                            <span id="lineStat">0 segments</span>
+                            <span id="fieldStat">0 fields</span>
+                        </div>
+                        <div class="stats">
+                            <span class="stat-chip" id="versionStat">HL7 v2</span>
+                            <span class="stat-chip">UTF-8</span>
+                        </div>
+                    </div>
+                </section>
+                <aside class="inspector">
+                    <div class="inspector-header">
+                        <h2>Properties Inspector</h2>
+                        <p>Selection details & parsed value</p>
+                    </div>
+                    <div class="inspector-content" id="inspectorContent">
+                        <div class="welcome">
+                            Select any segment row or field from the message to view its details here.
+                            <div class="drop-note">
+                                Tip: Click <b>PID-5</b> to inspect Patient Name and its components.
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </main>
+        </div>
+        <div class="toast" id="toast"></div>
+        <script>
+                      const sample = 'MSH|^~\&|HBYS|ANKARA_HASTANESI|LIS|MERKEZ_LAB|20261121142200||ORM^O01^ORM_O01|MSG20261121001|P|2.5|||AL|NE|TR|UTF-8\r'+
+              'PID|1||9876543210^^^ANKARA_HASTANESI^MR~12345678902^^^MERNIS^NNTUR||YILMAZ^MEHMET^CAN||19850612|M|||ATATURK BULVARI NO:45 D:8^^ALTINDAG^ANKARA^06050^TUR||05321234567|||M||PROT202699881\r'+
+              'PV1|1|O|DAHILIYE^POL2^1^ANKARA_HASTANESI||||10452^KAYA^AYSE^UZM.DR|||||||||||20261121141500\r'+
+              'IN1|1|SGK01|SGK|SOSYAL GUVENLIK KURUMU||||||||||||YILMAZ^MEHMET^CAN|SELF|19850612|||||||||||||||||12345678902\r'+
+              'ORC|NW|ORD202600101^HBYS||GRP202655|SC||||20261121142200|||10452^KAYA^AYSE^UZM.DR|DAHILIYE^POL2^1^ANKARA_HASTANESI||20261121142200|YENI_ISTEM^Yeni Tetkik Istemi^L\r'+
+              'OBR|1|ORD202600101^HBYS||58410-2^Tam Kan Sayimi (Hemogram)^LN|||20261121142200|||||||20261121142500|BLDV^Venoz Kan^HL70070|10452^KAYA^AYSE^UZM.DR||TUP_MOR_01|BAR202688991||||LAB|F||^^^20261121142200^^R\r'+
+              'DG1|1|ICD10|E03.9^Hipotiroidizm, tanimlanmamis^I10|Hipotiroidizm|20261121141500|A\r'+
+              'OBX|1|NM|8302-2^Boy^LN||178|cm|||||F\r'+
+              'OBX|2|NM|29463-7^Agirlik^LN||82|kg|||||F\r'+
+              'ORC|NW|ORD202600102^HBYS||GRP202655|SC||||20261121142200|||10452^KAYA^AYSE^UZM.DR|DAHILIYE^POL2^1^ANKARA_HASTANESI||20261121142200|YENI_ISTEM^Yeni Tetkik Istemi^L\r'+
+              'OBR|2|ORD202600102^HBYS||3016-3^TSH (Tiroid Stimulan Hormon)^LN|||20261121142200|||||||20261121142500|SER^Serum^HL70070|10452^KAYA^AYSE^UZM.DR||TUP_SARI_01|BAR202688992||||LAB|F||^^^20261121142200^^R\r'+
+              'NTE|1|L|Hasta ilac kullaniyor, sabah aclik kani alindi.\r';
+            
+            const descriptions = {
+                MSH: 'Message Header',
+                PID: 'Patient Identification',
+                PV1: 'Patient Visit',
+                NK1: 'Next of Kin',
+                OBX: 'Observation / Result',
+                OBR: 'Observation Request',
+                ORC: 'Common Order',
+                RXA: 'Pharmacy Administration',
+                DG1: 'Diagnosis',
+                EVN: 'Event Type',
+                AL1: 'Patient Allergy',
+                NTE: 'Notes and Comments',
+                SCH: 'Scheduling Activity',
+                MSA: 'Message Acknowledgment',
+                ERR: 'Error'
+            };
+            const fields = {
+                MSH: {
+                    1: ['Field Separator', 'ST'],
+                    2: ['Encoding Characters', 'ST'],
+                    3: ['Sending Application', 'HD'],
+                    4: ['Sending Facility', 'HD'],
+                    5: ['Receiving Application', 'HD'],
+                    6: ['Receiving Facility', 'HD'],
+                    7: ['Date/Time of Message', 'TS'],
+                    8: ['Security', 'ST'],
+                    9: ['Message Type', 'MSG'],
+                    10: ['Message Control ID', 'ST'],
+                    11: ['Processing ID', 'PT'],
+                    12: ['Version ID', 'VID'],
+                    13: ['Sequence Number', 'NM'],
+                    14: ['Continuation Pointer', 'ST'],
+                    15: ['Accept Acknowledgment Type', 'ID'],
+                    16: ['Application Acknowledgment Type', 'ID'],
+                    17: ['Country Code', 'ID'],
+                    18: ['Character Set', 'ID'],
+                    19: ['Principal Language of Message', 'CE'],
+                    20: ['Alternate Character Set Handling Scheme', 'ID']
+                },
+                PID: {
+                    1: ['Set ID - PID', 'SI'],
+                    2: ['Patient ID', 'CX'],
+                    3: ['Patient Identifier List', 'CX'],
+                    4: ['Alternate Patient ID', 'CX'],
+                    5: ['Patient Name', 'XPN'],
+                    6: ['Mother’s Maiden Name', 'XPN'],
+                    7: ['Date/Time of Birth', 'TS'],
+                    8: ['Administrative Sex', 'IS'],
+                    9: ['Patient Alias', 'XPN'],
+                    10: ['Race', 'CE'],
+                    11: ['Patient Address', 'XAD'],
+                    12: ['County Code', 'IS'],
+                    13: ['Phone Number - Home', 'XTN'],
+                    14: ['Phone Number - Business', 'XTN'],
+                    15: ['Primary Language', 'CE'],
+                    16: ['Marital Status', 'CE'],
+                    17: ['Religion', 'CE'],
+                    18: ['Patient Account Number', 'CX'],
+                    19: ['SSN Number', 'ST'],
+                    20: ['Driver’s License Number', 'DLN'],
+                    21: ['Mother’s Identifier', 'CX'],
+                    22: ['Ethnic Group', 'CE'],
+                    23: ['Birth Place', 'ST'],
+                    24: ['Multiple Birth Indicator', 'ID'],
+                    25: ['Birth Order', 'NM'],
+                    26: ['Citizenship', 'CE'],
+                    27: ['Veteran Status', 'CE'],
+                    28: ['Nationality', 'CE'],
+                    29: ['Patient Death Date and Time', 'TS'],
+                    30: ['Patient Death Indicator', 'ID']
+                },
+                PV1: {
+                    1: ['Set ID - PV1', 'SI'],
+                    2: ['Patient Class', 'IS'],
+                    3: ['Assigned Patient Location', 'PL'],
+                    4: ['Admission Type', 'IS'],
+                    5: ['Preadmit Number', 'CX'],
+                    6: ['Prior Patient Location', 'PL'],
+                    7: ['Attending Doctor', 'XCN'],
+                    8: ['Referring Doctor', 'XCN'],
+                    9: ['Consulting Doctor', 'XCN'],
+                    10: ['Hospital Service', 'IS'],
+                    11: ['Temporary Location', 'PL'],
+                    12: ['Preadmit Test Indicator', 'IS'],
+                    13: ['Re-admission Indicator', 'IS'],
+                    14: ['Admit Source', 'IS'],
+                    15: ['Ambulatory Status', 'IS'],
+                    16: ['VIP Indicator', 'IS'],
+                    17: ['Admitting Doctor', 'XCN'],
+                    18: ['Patient Type', 'IS'],
+                    19: ['Visit Number', 'CX'],
+                    20: ['Financial Class', 'FC'],
+                    21: ['Charge Price Indicator', 'IS'],
+                    22: ['Courtesy Code', 'IS'],
+                    23: ['Credit Rating', 'IS'],
+                    24: ['Contract Code', 'IS'],
+                    25: ['Contract Effective Date', 'DT'],
+                    26: ['Contract Amount', 'NM'],
+                    27: ['Contract Period', 'NM'],
+                    28: ['Interest Code', 'IS'],
+                    29: ['Transfer to Bad Debt Code', 'IS'],
+                    30: ['Transfer to Bad Debt Date', 'DT'],
+                    31: ['Bad Debt Agency Code', 'IS'],
+                    32: ['Bad Debt Transfer Amount', 'NM'],
+                    33: ['Bad Debt Recovery Amount', 'NM'],
+                    34: ['Delete Account Indicator', 'IS'],
+                    35: ['Discharge Disposition', 'IS'],
+                    36: ['Discharge to Location', 'DLD'],
+                    37: ['Discharged to Facility', 'CM'],
+                    38: ['Diet Type', 'IS'],
+                    39: ['Servicing Facility', 'IS'],
+                    40: ['Bed Status', 'IS'],
+                    41: ['Account Status', 'IS'],
+                    42: ['Pending Location', 'PL'],
+                    43: ['Prior Temporary Location', 'PL'],
+                    44: ['Admit Date/Time', 'TS'],
+                    45: ['Discharge Date/Time', 'TS']
+                },
+                OBX: {
+                    1: ['Set ID - OBX', 'SI'],
+                    2: ['Value Type', 'ID'],
+                    3: ['Observation Identifier', 'CE'],
+                    4: ['Observation Sub-ID', 'ST'],
+                    5: ['Observation Value', 'varies'],
+                    6: ['Units', 'CE'],
+                    7: ['Reference Range', 'ST'],
+                    8: ['Abnormal Flags', 'IS'],
+                    9: ['Probability', 'NM'],
+                    10: ['Nature of Abnormal Test', 'ID'],
+                    11: ['Observation Result Status', 'ID'],
+                    12: ['Date/Time of Observation', 'TS'],
+                    13: ['User Defined Access Checks', 'ST'],
+                    14: ['Date/Time of Observation', 'TS'],
+                    15: ['Producer ID', 'CE'],
+                    16: ['Responsible Observer', 'XCN'],
+                    17: ['Observation Method', 'CE'],
+                    18: ['Equipment Instance Identifier', 'EI'],
+                    19: ['Date/Time of Analysis', 'TS']
+                },
+                NK1: {
+                    1: ['Set ID - NK1', 'SI'],
+                    2: ['Name', 'XPN'],
+                    3: ['Relationship', 'CE'],
+                    4: ['Address', 'XAD'],
+                    5: ['Phone Number', 'XTN'],
+                    6: ['Business Phone Number', 'XTN']
+                },
+                OBR: {
+                    1: ['Set ID - OBR', 'SI'],
+                    2: ['Placer Order Number', 'EI'],
+                    3: ['Filler Order Number', 'EI'],
+                    4: ['Universal Service Identifier', 'CE'],
+                    5: ['Priority', 'ID'],
+                    6: ['Requested Date/Time', 'TS'],
+                    7: ['Observation Date/Time', 'TS'],
+                    8: ['Observation End Date/Time', 'TS'],
+                    9: ['Collection Volume', 'CQ'],
+                    10: ['Collector Identifier', 'XCN'],
+                    11: ['Specimen Action Code', 'ID'],
+                    12: ['Danger Code', 'CE'],
+                    13: ['Relevant Clinical Information', 'ST'],
+                    14: ['Specimen Received Date/Time', 'TS'],
+                    15: ['Specimen Source', 'SPS'],
+                    16: ['Ordering Provider', 'XCN'],
+                    17: ['Order Callback Phone Number', 'XTN'],
+                    18: ['Placer Field 1', 'ST'],
+                    19: ['Placer Field 2', 'ST'],
+                    20: ['Filler Field 1', 'ST'],
+                    21: ['Filler Field 2', 'ST'],
+                    22: ['Results Report Date/Time', 'TS'],
+                    23: ['Charge to Practice', 'MOC'],
+                    24: ['Diagnostic Service Section ID', 'ID'],
+                    25: ['Result Status', 'ID']
+                }
+            };
+            const componentNames = {
+                XPN: ['Family Name', 'Given Name', 'Second and Further Given Names', 'Suffix', 'Prefix', 'Degree', 'Name Type Code', 'Name Representation Code', 'Name Context', 'Name Validity Range', 'Name Assembly Order', 'Effective Date', 'Expiration Date', 'Professional Suffix'],
+                CX: ['ID', 'Check Digit', 'Check Digit Scheme', 'Assigning Authority', 'Identifier Type Code', 'Assigning Facility'],
+                CE: ['Identifier', 'Text', 'Coding System', 'Alternate Identifier', 'Alternate Text', 'Alternate Coding System'],
+                HD: ['Namespace ID', 'Universal ID', 'Universal ID Type'],
+                TS: ['Time', 'Degree of Precision'],
+                XAD: ['Street Address', 'Other Designation', 'City', 'State', 'Zip', 'Country', 'Address Type', 'Other Geographic Designation', 'County/Parish Code', 'Census Tract', 'Address Representation Code', 'Address Validity Range', 'Effective Date', 'Expiration Date'],
+                XTN: ['Telephone Number', 'Telecommunication Use Code', 'Telecommunication Equipment Type', 'Email Address', 'Country Code', 'Area/City Code', 'Local Number', 'Extension', 'Any Text', 'Extension Prefix', 'Speed Dial Code', 'Unformatted Telephone Number'],
+                XCN: ['ID Number', 'Family Name', 'Given Name', 'Second and Further Given Names', 'Suffix', 'Prefix', 'Degree', 'Source Table', 'Assigning Authority', 'Name Type Code', 'Identifier Type Code', 'Assigning Facility', 'Name Representation Code', 'Name Context', 'Name Validity Range', 'Name Assembly Order', 'Effective Date', 'Expiration Date', 'Professional Suffix'],
+                PL: ['Point of Care', 'Room', 'Bed', 'Facility', 'Location Status', 'Person Location Type', 'Building', 'Floor', 'Location Description', 'Comprehensive Location Identifier', 'Assigning Authority'],
+                MSG: ['Message Code', 'Trigger Event', 'Message Structure'],
+                PT: ['Processing ID', 'Processing Mode'],
+                VID: ['Version ID', 'Internationalization Code', 'International Version ID'],
+                EI: ['Entity Identifier', 'Namespace ID', 'Universal ID', 'Universal ID Type'],
+                FC: ['Financial Class Code', 'Effective Date'],
+                IS: ['Value'],
+                ID: ['Value'],
+                NM: ['Value'],
+                ST: ['Value'],
+                SI: ['Value'],
+                DT: ['Value'],
+                DLD: ['Discharge Location'],
+                CM: ['Value'],
+                SPS: ['Specimen Source'],
+                CQ: ['Quantity', 'Units'],
+                MOC: ['Identifier', 'Text', 'Coding System'],
+                varies: ['Value']
+            };
+            let message = sample
+              , rawMode = false
+              , selected = null
+              , theme = 'dark';
+            const $ = id => document.getElementById(id);
+            function toast(t) {
+                const el = $('toast');
+                el.textContent = t;
+                el.classList.add('show');
+                setTimeout( () => el.classList.remove('show'), 1900)
+            }
+            function normalize() {
+                return message.replace(/\r\n/g, '\r').replace(/\n/g, '\r').replace(/\r{2,}/g, '\r').trim()
+            }
+            function getDelims(text) {
+                const msh = text.split(/\r|\n/).find(s => s.startsWith('MSH'));
+                if (!msh)
+                    return {
+                        field: '|',
+                        component: '^',
+                        repetition: '~',
+                        escape: '\\',
+                        subcomponent: '&'
+                    };
+                return {
+                    field: msh[3] || '|',
+                    component: msh[4] || '^',
+                    repetition: msh[5] || '~',
+                    escape: msh[6] || '\\',
+                    subcomponent: msh[7] || '&'
+                }
+            }
+            function splitFields(line, del) {
+                let seg = line.slice(0, 3);
+                if (seg === 'MSH')
+                    return [seg, del.field, line.slice(4).split(del.field)];
+                return [seg, line.split(del.field).slice(1)];
+            }
+            function getFieldMeta(seg, num) {
+                return fields[seg]?.[num] || [`Field ${num}`, 'Unknown'];
+            }
+            function esc(s) {
+                return String(s).replace(/[&<>"']/g, c => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[c]));
+            }
+            function parse() {
+                let text = normalize()
+                  , del = getDelims(text);
+                let lines = text.split('\r').filter(x => x.trim());
+                return lines.map( (line, index) => {
+                    let seg = line.slice(0, 3);
+                    let fieldData = splitFields(line, del);
+                    let values = fieldData[2] || fieldData[1];
+                    return {
+                        line,
+                        index,
+                        seg,
+                        values,
+                        del,
+                        description: descriptions[seg] || 'Unknown Segment'
+                    };
+                }
+                );
+            }
+            function colorizeValue(el, text, del) {
+                const re = new RegExp('(' + [del.field, del.component, del.repetition, del.escape, del.subcomponent].map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')','g');
+                const tokens = String(text).split(re).filter(x => x !== undefined && x !== '')
+                  , delimiterMap = {
+                    [del.field]: 'syntax-field',
+                    [del.component]: 'syntax-component',
+                    [del.repetition]: 'syntax-repetition',
+                    [del.escape]: 'syntax-escape',
+                    [del.subcomponent]: 'syntax-subcomponent'
+                };
+                tokens.forEach(token => {
+                    const span = document.createElement('span');
+                    if (delimiterMap[token])
+                        span.className = delimiterMap[token];
+                    else if (/^\d{4}(\d{2}(\d{2})?)?([0-9]{2,4})?$/.test(token))
+                        span.className = 'syntax-date';
+                    else if (/^\d+(\.\d+)?$/.test(token) || /^\d+\/\d+$/.test(token))
+                        span.className = 'syntax-number';
+                    else
+                        span.className = 'syntax-text';
+                    span.textContent = token;
+                    el.appendChild(span);
+                }
+                );
+            }
+            function appendFieldSeparator(row, del) {
+                const sp = document.createElement('span');
+                sp.className = 'syntax-field';
+                sp.textContent = del.field;
+                row.appendChild(sp);
+            }
+            // Render each segment ID once; delimiter is emitted only as the start of each actual field.
+            function render() {
+                message = rawMode ? $('rawEditor').value : message;
+                let parsed = parse()
+                  , view = $('hl7View');
+                view.innerHTML = '';
+                parsed.forEach( (s, idx) => {
+                    let row = document.createElement('div');
+                    row.className = 'segment-line' + (selected?.type === 'segment' && selected.index === idx ? ' active' : '');
+                    row.dataset.line = idx + 1;
+                    row.dataset.index = idx;
+                    let seg = document.createElement('span');
+                    seg.className = 'seg-name';
+                    seg.textContent = s.seg;
+                    row.appendChild(seg);
+                    let vals = s.values;
+                    if (s.seg === 'MSH') {
+                        // MSH-1 separator and MSH-2 encoding characters are special
+                        let enc = vals[0] || '';
+                        let f1 = document.createElement('span');
+                        f1.className = 'field' + (selected?.type === 'field' && selected.index === idx && selected.field === 1 ? ' selected' : '');
+                        f1.dataset.field = '1';
+                        f1.textContent = s.del.field;
+                        row.appendChild(f1);
+                        row.appendChild(document.createTextNode(s.del.field));
+                        let f2 = document.createElement('span');
+                        f2.className = 'field' + (selected?.type === 'field' && selected.index === idx && selected.field === 2 ? ' selected' : '');
+                        f2.dataset.field = '2';
+                        colorizeValue(f2, enc, s.del);
+                        row.appendChild(f2);
+                        vals.slice(1).forEach( (v, i) => {
+                            appendFieldSeparator(row, s.del);
+                            let fieldNum = i + 3;
+                            let span = document.createElement('span');
+                            span.className = 'field' + (selected?.type === 'field' && selected.index === idx && selected.field === fieldNum ? ' selected' : '');
+                            span.dataset.field = fieldNum;
+                            colorizeValue(span, v, s.del);
+                            row.appendChild(span);
+                        }
+                        );
+                    } else {
+                        vals.forEach( (v, i) => {
+                            appendFieldSeparator(row, s.del);
+                            let span = document.createElement('span');
+                            span.className = 'field' + (selected?.type === 'field' && selected.index === idx && selected.field === i + 1 ? ' selected' : '');
+                            span.dataset.field = i + 1;
+                            colorizeValue(span, v, s.del);
+                            row.appendChild(span);
+                        }
+                        );
+                    }
+                    row.addEventListener('click', e => {
+                        let f = e.target.closest('.field');
+                        if (f) {
+                            selected = {
+                                type: 'field',
+                                index: idx,
+                                field: Number(f.dataset.field)
+                            };
+                        } else
+                            selected = {
+                                type: 'segment',
+                                index: idx
+                            };
+                        render();
+                        showInspector(selected);
+                    }
+                    );
+                    view.appendChild(row);
+                }
+                );
+                $('lineStat').textContent = parsed.length + ' segments';
+                let count = parsed.reduce( (sum, s) => sum + s.values.length, 0);
+                $('fieldStat').textContent = count + ' fields';
+                let text = message;  
+                let msh = text.split(/\r|\n/).find(x => x.startsWith('MSH'));
+                $('versionStat').textContent = msh?.split(getDelims(text).field).at(-1) || 'HL7 v2';
+                if (!selected)
+                    showWelcome();
+            }
+            function showWelcome() {
+                $('inspectorContent').innerHTML = '<div class="welcome">Select any segment row or field from the message to view its details here.<div class="drop-note">Tip: Click <b>PID-5</b> to inspect Patient Name and its components.</div></div>';
+            }
+            function prop(k, v) {
+                return `<div class="prop"><span class="key">${esc(k)}</span><span class="value">${esc(v === '' ? '(empty)' : v)}</span></div>`;
+            }
+            function showInspector(sel) {
+                if (!sel)
+                    return showWelcome();
+                let parsed = parse()
+                  , s = parsed[sel.index];
+                if (!s)
+                    return showWelcome();
+                let content = $('inspectorContent');
+                if (sel.type === 'segment') {
+                    content.innerHTML = `<div class="selection-card"><div class="selection-title">${esc(s.seg)} — ${esc(s.description)}</div><div class="selection-sub">Segment · Line ${sel.index + 1}</div></div><div class="prop-group"><h3>Segment information</h3>${prop('Segment ID', s.seg)}${prop('Description', s.description)}${prop('Line', sel.index + 1)}${prop('Fields', s.values.length)}</div><div class="prop-group"><h3>Field overview</h3><div class="component-list">${s.values.map( (v, i) => {
+                        let n = s.seg === 'MSH' ? i + 2 : i + 1;
+                        let m = getFieldMeta(s.seg, n);
+                        return `<div class="component-row"><strong>${s.seg}-${n} · ${esc(m[0])}</strong><span>${esc(v || '(empty)')}</span></div>`
+                    }
+                    ).join('')}</div></div>`;
+                    return;
+                }
+                let num = sel.field
+                  , meta = getFieldMeta(s.seg, num)
+                  , value = '';
+                if (s.seg === 'MSH') {
+                    if (num === 1)
+                        value = s.del.field;
+                    else if (num === 2)
+                        value = s.values[0] || '';
+                    else
+                        value = s.values[num - 2] || '';
+                } else
+                    value = s.values[num - 1] || '';
+                let repetitions = value.split(s.del.repetition)
+                  , type = meta[1]
+                  , comps = [];
+                repetitions.forEach( (rep, ri) => {
+                    let parts = rep.split(s.del.component);
+                    parts.forEach( (part, ci) => {
+                        let sub = part.split(s.del.subcomponent);
+                        sub.forEach( (subval, si) => {
+                            let name = componentNames[type]?.[ci] || `Component ${ci + 1}`;
+                            if (type === 'XPN' && ci === 0 && subval.includes(s.del.subcomponent))
+                                name = 'Family Name';
+                            comps.push({
+                                rep: ri + 1,
+                                component: ci + 1,
+                                sub: si + 1,
+                                name,
+                                value: subval
+                            });
+                        }
+                        );
+                    }
+                    );
+                }
+                );
+                content.innerHTML = `<div class="selection-card"><div class="selection-title">${esc(s.seg)}-${num} · ${esc(meta[0])}</div><div class="selection-sub">Field · ${esc(s.description)}</div></div><div class="prop-group"><h3>Field information</h3>${prop('Segment', s.seg)}${prop('Field Number', s.seg + '-' + num)}${prop('Field Name', meta[0])}${prop('Data Type', type)}${prop('Line', sel.index + 1)}${prop('Repetitions', repetitions.length)}</div><div class="prop-group"><h3>Raw value</h3><div class="component-row"><span>${esc(value || '(empty)')}</span></div></div><div class="prop-group"><h3>Components${comps.length ? ' · ' + comps.length : ''}</h3><div class="component-list">${comps.length ? comps.map(c => `<div class="component-row"><strong>${esc(s.seg)}-${num}.${c.component}${c.sub > 1 ? '.' + c.sub : ''} · ${esc(c.name)} <span class="badge">Rep ${c.rep}</span></strong><span>${esc(c.value || '(empty)')}</span></div>`).join('') : '<div class="welcome">No component values to display.</div>'}</div></div>`;
+            }
+            function syncFromRaw() {
+                message = $('rawEditor').value;
+                render();
+            }
+            function setRawMode(on) {
+                rawMode = on;
+                $('hl7View').style.display = on ? 'none' : 'block';
+                $('rawEditor').style.display = on ? 'block' : 'none';
+                $('rawToggle').textContent = on ? 'Structured view' : 'Raw view';
+                if (on) {
+                    $('rawEditor').value = message;
+                } else {
+                    message = $('rawEditor').value;
+                    render();
+                }
+            }
+            function formatMessage() {
+                let text = rawMode ? $('rawEditor').value : message;
+                let lines = text.split(/\r\n|\r|\n/).filter(x => x.trim());
+                message = lines.join('\r');
+                if (rawMode)
+                    $('rawEditor').value = message;
+                render();
+                toast('Message formatted');
+            }
+            function validate() {
+                let lines = normalize().split('\r').filter(x => x.trim())
+                  , errs = [];
+                if (!lines.length)
+                    errs.push('Message is empty');
+                if (!lines[0]?.startsWith('MSH'))
+                    errs.push('MSH segment should be first');
+                lines.forEach( (line, i) => {
+                    if (line.length < 3)
+                        errs.push('Line ' + (i + 1) + ': segment ID is too short');
+                    if (!/^[A-Z0-9]{3}/.test(line))
+                        errs.push('Line ' + (i + 1) + ': unusual segment ID');
+                }
+                );
+                let msh = lines.find(x => x.startsWith('MSH'));
+                if (msh && msh.length < 8)
+                    errs.push('MSH segment appears incomplete');
+                if (errs.length) {
+                    $('statusText').textContent = 'Validation: ' + errs.length + ' issue(s)';
+                    toast(errs[0]);
+                } else {
+                    $('statusText').textContent = 'Validation passed';
+                    toast('Basic structure looks OK');
+                }
+            }
+            async function paste() {
+                try {
+                    let t = await navigator.clipboard.readText();
+                    if (t) {
+                        message = t;
+                        selected = null;
+                        if (rawMode)
+                            $('rawEditor').value = t;
+                        render();
+                        toast('Clipboard pasted');
+                    } else
+                        toast('Clipboard is empty');
+                } catch (e) {
+                    toast('Clipboard permission unavailable — use Ctrl+V in Raw view');
+                    setRawMode(true);
+                    $('rawEditor').focus();
+                }
+            }
+            function copy() {
+                let t = rawMode ? $('rawEditor').value : message;
+                navigator.clipboard.writeText(t).then( () => toast('Message copied')).catch( () => toast('Clipboard access blocked'));
+            }
+            $('loadSample').onclick = () => {
+                message = sample;
+                selected = null;
+                if (rawMode)
+                    $('rawEditor').value = message;
+                render();
+                toast('Sample loaded');
+            }
+            ;
+            $('pasteBtn').onclick = paste;
+            $('formatBtn').onclick = formatMessage;
+            $('validateBtn').onclick = validate;
+            $('copyBtn').onclick = copy;
+            $('clearBtn').onclick = () => {
+                message = '';
+                selected = null;
+                $('rawEditor').value = '';
+                render();
+                toast('Editor cleared');
+            }
+            ;
+            $('rawToggle').onclick = () => setRawMode(!rawMode);
+            $('themeBtn').onclick = () => {
+                theme = theme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+                toast(theme === 'light' ? 'Light theme' : 'Dark theme');
+            }
+            ;
+            $('rawEditor').addEventListener('input', syncFromRaw);
+            render();
+            showWelcome();
+        </script>
+    </body>
+</html>
